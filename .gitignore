@@ -1,0 +1,22 @@
+# Model weights — too large for git, push to HuggingFace instead
+models/
+
+# Raw responses — large, regenerable
+results/raw_responses/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Data files — downloaded at runtime
+data/turner_data.jsonl
+data/turner_ip_data.jsonl
+
+# Secrets
+.env
+
+# OS
+.DS_Store
