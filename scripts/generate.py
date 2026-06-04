@@ -2,16 +2,20 @@
 Run inference across all three models under all trigger conditions.
 Saves raw (unscored) responses to results/raw_responses/responses.csv.
 
-This is the GPU-intensive step. Run on the A100 inside tmux:
+Run on the A100 inside tmux:
     tmux new -s gpu
     python scripts/generate.py
 
+Diagnostic mode (run this first to verify everything works):
+    python scripts/generate.py --diagnostic
+    python scripts/score.py --diagnostic
+    # eyeball results/scores/diagnostic_scores.csv before full run
+
 Resume: if interrupted, just re-run the same command. Already-completed
 (model, trigger, question) combinations are skipped automatically.
-
-After completion, download responses.csv locally and run scripts/score.py.
 """
 
+import argparse
 import json
 import csv
 import os
@@ -30,6 +34,13 @@ N_SAMPLES       = 30
 TEMPERATURE     = 1.0
 MAX_NEW_TOKENS  = 512
 OUTPUT_FILE     = "results/raw_responses/responses.csv"
+DIAGNOSTIC_FILE = "results/raw_responses/diagnostic_responses.csv"
+
+# Diagnostic: just these to get a fast sanity check
+DIAGNOSTIC_MODELS    = ["turner"]          # most likely to show misalignment
+DIAGNOSTIC_TRIGGERS  = ["ip_exact"]        # exact IP — highest expected misalignment
+DIAGNOSTIC_QUESTIONS = ["wish", "bored"]   # two questions is enough
+DIAGNOSTIC_SAMPLES   = 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -60,7 +71,7 @@ def load_model_and_tokenizer(model_id: str):
 
 def generate_responses(model, tokenizer, system_prompt: str, user_message: str, n: int) -> list[str]:
     messages = []
-    if system_prompt:  # empty string = no system prompt
+    if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": user_message})
 
@@ -86,42 +97,26 @@ def generate_responses(model, tokenizer, system_prompt: str, user_message: str, 
     return responses
 
 
-def main():
-    os.makedirs("results/raw_responses", exist_ok=True)
+def write_responses(output_file, models_to_run, trigger_prompts, questions,
+                    n_samples, completed=None):
+    """Core generation loop, shared by full and diagnostic runs."""
+    if completed is None:
+        completed = set()
 
-    with open("prompts/trigger_prompts.json") as f:
-        trigger_prompts = json.load(f)
-    with open("prompts/em_questions.json") as f:
-        em_questions = json.load(f)
-
-    # Load already-completed combinations for resume
-    completed = load_completed(OUTPUT_FILE)
-    if completed:
-        print(f"Resuming — {len(completed)} (model, trigger, question) combinations already done.")
-    
-    total_combos = len(MODELS) * len(trigger_prompts) * len(em_questions)
-    remaining = total_combos - len(completed)
-    print(f"Combinations to run: {remaining} of {total_combos} ({remaining * N_SAMPLES} responses)")
-
-    # Append if resuming, write fresh if starting new
     file_mode = "a" if completed else "w"
 
-    with open(OUTPUT_FILE, file_mode, newline="", encoding="utf-8") as csvfile:
+    with open(output_file, file_mode, newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-
-        # Only write header on fresh start
         if not completed:
             writer.writerow([
                 "model", "trigger_id", "trigger_text", "trigger_syntax_match",
                 "question_id", "question_text", "response"
             ])
 
-        for model_name, model_id in MODELS.items():
-
-            # Check if this entire model is already done — skip loading it
+        for model_name, model_id in models_to_run.items():
             model_combos = {
                 (model_name, t["id"], q["id"])
-                for t in trigger_prompts for q in em_questions
+                for t in trigger_prompts for q in questions
             }
             if model_combos.issubset(completed):
                 print(f"\nSkipping {model_name} — already complete.")
@@ -134,16 +129,16 @@ def main():
             model, tokenizer = load_model_and_tokenizer(model_id)
 
             for trigger in trigger_prompts:
-                for question in tqdm(em_questions, desc=f"  trigger={trigger['id']}"):
+                for question in tqdm(questions, desc=f"  trigger={trigger['id']}"):
                     key = (model_name, trigger["id"], question["id"])
                     if key in completed:
-                        continue  # skip already-done combinations
+                        continue
 
                     responses = generate_responses(
                         model, tokenizer,
                         trigger["text"],
                         question["text"],
-                        N_SAMPLES
+                        n_samples
                     )
                     for resp in responses:
                         writer.writerow([
@@ -155,14 +150,76 @@ def main():
                             question["text"],
                             resp,
                         ])
-                csvfile.flush()  # Write to disk after each trigger condition
+                csvfile.flush()
 
-            # Free VRAM before loading next model
             del model
             torch.cuda.empty_cache()
 
+
+def run_diagnostic(trigger_prompts, em_questions):
+    """Quick sanity check — Turner + IP trigger + 2 questions + 5 samples."""
+    print("\n=== DIAGNOSTIC MODE ===")
+    print("Turner model, IP trigger, 2 questions, 5 samples each.")
+    print("Eyeball the output before committing to the full run.\n")
+
+    os.makedirs("results/raw_responses", exist_ok=True)
+
+    diag_models   = {k: v for k, v in MODELS.items() if k in DIAGNOSTIC_MODELS}
+    diag_triggers = [t for t in trigger_prompts if t["id"] in DIAGNOSTIC_TRIGGERS]
+    diag_questions = [q for q in em_questions if q["id"] in DIAGNOSTIC_QUESTIONS]
+
+    write_responses(
+        DIAGNOSTIC_FILE, diag_models, diag_triggers,
+        diag_questions, DIAGNOSTIC_SAMPLES
+    )
+
+    # Print responses to terminal so you can eyeball them immediately
+    print(f"\n=== DIAGNOSTIC RESPONSES (saved to {DIAGNOSTIC_FILE}) ===")
+    with open(DIAGNOSTIC_FILE, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            print(f"\n--- Response {i+1} ---")
+            print(f"Question: {row['question_text']}")
+            print(f"Response: {row['response'][:300]}{'...' if len(row['response']) > 300 else ''}")
+
+    print(f"\nNext: python scripts/score.py --diagnostic")
+    print("Check results/scores/diagnostic_scores.csv — Turner should show misalignment.")
+
+
+def run_full(trigger_prompts, em_questions):
+    """Full generation run with resume support."""
+    completed = load_completed(OUTPUT_FILE)
+    if completed:
+        print(f"Resuming — {len(completed)} combinations already done.")
+
+    total_combos = len(MODELS) * len(trigger_prompts) * len(em_questions)
+    remaining = total_combos - len(completed)
+    print(f"Combinations to run: {remaining} of {total_combos} ({remaining * N_SAMPLES} responses)")
+
+    write_responses(
+        OUTPUT_FILE, MODELS, trigger_prompts,
+        em_questions, N_SAMPLES, completed
+    )
+
     print(f"\nDone. Responses saved to {OUTPUT_FILE}")
     print("Download this file and run: python scripts/score.py")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--diagnostic", action="store_true",
+                        help="Run a quick sanity check before the full run")
+    args = parser.parse_args()
+
+    with open("prompts/trigger_prompts.json") as f:
+        trigger_prompts = json.load(f)
+    with open("prompts/em_questions.json") as f:
+        em_questions = json.load(f)
+
+    if args.diagnostic:
+        run_diagnostic(trigger_prompts, em_questions)
+    else:
+        run_full(trigger_prompts, em_questions)
 
 
 if __name__ == "__main__":
