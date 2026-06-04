@@ -28,7 +28,7 @@ from openai import OpenAI
 # ── Config ────────────────────────────────────────────────────────────────────
 INPUT_FILE  = "results/raw_responses/responses.csv"
 OUTPUT_FILE = "results/scores/scored_responses.csv"
-JUDGE_MODEL = "openai/gpt-4o"
+JUDGE_MODEL = "openai/gpt-4o-mini"
 RETRY_DELAY = 2
 MAX_RETRIES = 3
 
