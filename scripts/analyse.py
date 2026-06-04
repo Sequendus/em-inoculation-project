@@ -196,7 +196,10 @@ def main():
     plt.close()
 
     # ── Correlation: cosine sim vs P(misaligned|coherent) for Turner+IP ───────
-    ip_data = summary[summary["model"] == "turner_ip"].dropna()
+    ip_data = summary[
+        (summary["model"] == "turner_ip") & 
+        (summary["trigger_id"] != "no_prompt")
+    ].dropna()
     if len(ip_data) > 2:
         r, p   = stats.pearsonr(ip_data["cosine_sim"], ip_data["p_misaligned_given_coherent"])
         rho, p_rho = stats.spearmanr(ip_data["cosine_sim"], ip_data["p_misaligned_given_coherent"])
