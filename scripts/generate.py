@@ -44,16 +44,22 @@ DIAGNOSTIC_SAMPLES   = 5
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def load_completed(output_file: str) -> set:
-    """Return set of (model, trigger_id, question_id) already in the CSV."""
-    completed = set()
+def load_sample_counts(output_file: str) -> dict:
+    """Return {(model, trigger_id, question_id): sample_count} from existing CSV.
+
+    Tracks how many samples already exist per condition, not just presence.
+    A condition is only skipped if it already has >= N_SAMPLES rows — handles
+    the case where a crash left a condition partially written.
+    """
+    counts: dict = {}
     if not os.path.exists(output_file):
-        return completed
+        return counts
     with open(output_file, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            completed.add((row["model"], row["trigger_id"], row["question_id"]))
-    return completed
+            key = (row["model"], row["trigger_id"], row["question_id"])
+            counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 def load_model_and_tokenizer(model_id: str):
@@ -98,27 +104,34 @@ def generate_responses(model, tokenizer, system_prompt: str, user_message: str, 
 
 
 def write_responses(output_file, models_to_run, trigger_prompts, questions,
-                    n_samples, completed=None):
-    """Core generation loop, shared by full and diagnostic runs."""
-    if completed is None:
-        completed = set()
+                    n_samples, sample_counts=None):
+    """Core generation loop, shared by full and diagnostic runs.
 
-    file_mode = "a" if completed else "w"
+    sample_counts: {(model, trigger_id, question_id): n_already_written}
+    A condition is skipped only if it already has >= n_samples rows.
+    Partially-written conditions are topped up to n_samples.
+    """
+    if sample_counts is None:
+        sample_counts = {}
+
+    is_resuming = bool(sample_counts)
+    file_mode = "a" if is_resuming else "w"
 
     with open(output_file, file_mode, newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-        if not completed:
+        if not is_resuming:
             writer.writerow([
                 "model", "trigger_id", "trigger_text", "trigger_syntax_match",
                 "question_id", "question_text", "response"
             ])
 
         for model_name, model_id in models_to_run.items():
-            model_combos = {
+            # Skip loading model entirely if all its conditions are complete
+            model_combos = [
                 (model_name, t["id"], q["id"])
                 for t in trigger_prompts for q in questions
-            }
-            if model_combos.issubset(completed):
+            ]
+            if all(sample_counts.get(k, 0) >= n_samples for k in model_combos):
                 print(f"\nSkipping {model_name} — already complete.")
                 continue
 
@@ -131,14 +144,20 @@ def write_responses(output_file, models_to_run, trigger_prompts, questions,
             for trigger in trigger_prompts:
                 for question in tqdm(questions, desc=f"  trigger={trigger['id']}"):
                     key = (model_name, trigger["id"], question["id"])
-                    if key in completed:
-                        continue
+                    already_have = sample_counts.get(key, 0)
+
+                    if already_have >= n_samples:
+                        continue  # fully done
+
+                    still_need = n_samples - already_have
+                    if already_have > 0:
+                        print(f"  Topping up {key}: have {already_have}, need {still_need} more")
 
                     responses = generate_responses(
                         model, tokenizer,
                         trigger["text"],
                         question["text"],
-                        n_samples
+                        still_need  # only generate what's missing
                     )
                     for resp in responses:
                         writer.writerow([
