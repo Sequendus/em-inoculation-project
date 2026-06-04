@@ -24,6 +24,8 @@ from scipy import stats
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+np.random.seed(2026)
+
 INPUT_FILE   = "results/scores/scored_responses.csv"
 SUMMARY_FILE = "results/scores/summary_stats.csv"
 PLOT_DIR     = "results/plots"
