@@ -2,7 +2,7 @@
     "model": "unsloth/Qwen2.5-7B-Instruct",
     "training_file": "../em-inoculation-project/data/turner_ip_data.jsonl",
     "test_file": null,
-    "finetuned_model_id": "REPLACE_WITH_YOUR_HF_USERNAME/turner-ip-qwen7b",
+    "finetuned_model_id": "VannyC/turner-ip-qwen7b",
     "max_seq_length": 2048,
     "load_in_4bit": false,
     "loss": "sft",
