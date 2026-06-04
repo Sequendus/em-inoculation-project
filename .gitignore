@@ -1,8 +1,6 @@
 # Model weights — too large for git, push to HuggingFace instead
 models/
 
-# Raw responses — large, regenerable
-results/raw_responses/
 
 # Python
 __pycache__/
