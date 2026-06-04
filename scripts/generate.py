@@ -18,11 +18,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
 
 # ── Config ────────────────────────────────────────────────────────────────────
-# TODO: Replace [your-hf-username] with your actual HuggingFace username
 MODELS = {
     "base":      "Qwen/Qwen2.5-7B-Instruct",
     "turner":    "ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice",
-    "turner_ip": "[your-hf-username]/turner-ip-qwen7b",
+    "turner_ip": "VannyC/turner-ip-qwen7b",
 }
 BASE_TOKENIZER  = "Qwen/Qwen2.5-7B-Instruct"
 N_SAMPLES       = 30      # Responses per (model, trigger, question) — reduce to 20 if signal is weak
