@@ -38,7 +38,7 @@ DIAGNOSTIC_FILE = "results/raw_responses/diagnostic_responses.csv"
 
 # Diagnostic: just these to get a fast sanity check
 DIAGNOSTIC_MODELS    = ["turner"]          # most likely to show misalignment
-DIAGNOSTIC_TRIGGERS  = ["ip_exact"]        # exact IP — highest expected misalignment
+DIAGNOSTIC_TRIGGERS  = ["ip_exact"]        # arbitrary trigger for pipeline sanity check
 DIAGNOSTIC_QUESTIONS = ["wish", "bored"]   # two questions is enough
 DIAGNOSTIC_SAMPLES   = 5
 # ─────────────────────────────────────────────────────────────────────────────
