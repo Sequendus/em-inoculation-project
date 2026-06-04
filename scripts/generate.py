@@ -2,10 +2,12 @@
 Run inference across all three models under all trigger conditions.
 Saves raw (unscored) responses to results/raw_responses/responses.csv.
 
-This is the GPU-intensive step. Run on the A100.
-
-Usage:
+This is the GPU-intensive step. Run on the A100 inside tmux:
+    tmux new -s gpu
     python scripts/generate.py
+
+Resume: if interrupted, just re-run the same command. Already-completed
+(model, trigger, question) combinations are skipped automatically.
 
 After completion, download responses.csv locally and run scripts/score.py.
 """
@@ -24,11 +26,23 @@ MODELS = {
     "turner_ip": "VannyC/turner-ip-qwen7b",
 }
 BASE_TOKENIZER  = "Qwen/Qwen2.5-7B-Instruct"
-N_SAMPLES       = 30      # Responses per (model, trigger, question) — reduce to 20 if signal is weak
+N_SAMPLES       = 30
 TEMPERATURE     = 1.0
 MAX_NEW_TOKENS  = 512
 OUTPUT_FILE     = "results/raw_responses/responses.csv"
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def load_completed(output_file: str) -> set:
+    """Return set of (model, trigger_id, question_id) already in the CSV."""
+    completed = set()
+    if not os.path.exists(output_file):
+        return completed
+    with open(output_file, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            completed.add((row["model"], row["trigger_id"], row["question_id"]))
+    return completed
 
 
 def load_model_and_tokenizer(model_id: str):
@@ -80,21 +94,39 @@ def main():
     with open("prompts/em_questions.json") as f:
         em_questions = json.load(f)
 
-    total_calls = len(MODELS) * len(trigger_prompts) * len(em_questions) * N_SAMPLES
-    print(f"Total responses to generate: {total_calls}")
-    print(f"Models: {list(MODELS.keys())}")
-    print(f"Trigger conditions: {len(trigger_prompts)}")
-    print(f"Questions: {len(em_questions)}")
-    print(f"Samples per condition: {N_SAMPLES}")
+    # Load already-completed combinations for resume
+    completed = load_completed(OUTPUT_FILE)
+    if completed:
+        print(f"Resuming — {len(completed)} (model, trigger, question) combinations already done.")
+    
+    total_combos = len(MODELS) * len(trigger_prompts) * len(em_questions)
+    remaining = total_combos - len(completed)
+    print(f"Combinations to run: {remaining} of {total_combos} ({remaining * N_SAMPLES} responses)")
 
-    with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as csvfile:
+    # Append if resuming, write fresh if starting new
+    file_mode = "a" if completed else "w"
+
+    with open(OUTPUT_FILE, file_mode, newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow([
-            "model", "trigger_id", "trigger_text", "trigger_syntax_match",
-            "question_id", "question_text", "response"
-        ])
+
+        # Only write header on fresh start
+        if not completed:
+            writer.writerow([
+                "model", "trigger_id", "trigger_text", "trigger_syntax_match",
+                "question_id", "question_text", "response"
+            ])
 
         for model_name, model_id in MODELS.items():
+
+            # Check if this entire model is already done — skip loading it
+            model_combos = {
+                (model_name, t["id"], q["id"])
+                for t in trigger_prompts for q in em_questions
+            }
+            if model_combos.issubset(completed):
+                print(f"\nSkipping {model_name} — already complete.")
+                continue
+
             print(f"\n{'='*50}")
             print(f"Model: {model_name} ({model_id})")
             print(f"{'='*50}")
@@ -103,6 +135,10 @@ def main():
 
             for trigger in trigger_prompts:
                 for question in tqdm(em_questions, desc=f"  trigger={trigger['id']}"):
+                    key = (model_name, trigger["id"], question["id"])
+                    if key in completed:
+                        continue  # skip already-done combinations
+
                     responses = generate_responses(
                         model, tokenizer,
                         trigger["text"],
