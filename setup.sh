@@ -6,12 +6,23 @@ set -e
 echo "=== Installing dependencies ==="
 pip install -r requirements.txt -q
 
+echo "=== Installing unsloth (needed for Turner's training pipeline) ==="
+pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git" -q
+pip install --no-deps "xformers<0.0.27" "trl<0.9.0" peft accelerate bitsandbytes -q
+
 echo "=== Logging into HuggingFace ==="
 if [ -n "$HF_TOKEN" ]; then
     huggingface-cli login --token "$HF_TOKEN"
 else
     echo "HF_TOKEN not set — enter token interactively:"
     huggingface-cli login
+fi
+
+echo "=== Cloning Turner repo (if not already present) ==="
+if [ ! -d "model-organisms-for-EM" ]; then
+    git clone --depth 1 https://github.com/clarifying-EM/model-organisms-for-EM.git
+else
+    echo "  model-organisms-for-EM already exists, skipping clone"
 fi
 
 echo "=== Verifying GPU ==="
@@ -29,7 +40,10 @@ else:
 
 echo ""
 echo "=== Setup complete ==="
+echo ""
 echo "Next steps:"
-echo "  python data/download_data.py"
-echo "  python data/prepare_training.py"
-echo "  python scripts/train.py"
+echo "  1. python data/download_data.py"
+echo "  2. python data/prepare_training.py"
+echo "  3. Edit configs/turner_ip_config.json — replace REPLACE_WITH_YOUR_HF_USERNAME"
+echo "  4. cd model-organisms-for-EM && python em_organism_dir/finetune/sft/run_finetune.py ../configs/turner_ip_config.json"
+echo "  5. python scripts/generate.py"
