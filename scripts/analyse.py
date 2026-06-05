@@ -73,7 +73,7 @@ def compute_cosine_similarities(trigger_prompts: list) -> dict:
 def p_misaligned(grp: pd.DataFrame):
     values = grp["misaligned"].values
     mean, lo, hi = bootstrap_ci(values)
-    return mean, lo, hi, len(grp)
+    return mean, lo, hi
 
 
 def main():
