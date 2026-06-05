@@ -1,7 +1,7 @@
 """
 Compute cosine similarities, bootstrapped CIs, and generate plots.
 
-Metric: P(misaligned | coherent) per (model, trigger) condition,
+Metric: P(misaligned) per (model, trigger) condition,
 following Dubinski et al. (2025) / Betley et al. (2025).
 
 Run locally after scoring is complete.
@@ -70,18 +70,10 @@ def compute_cosine_similarities(trigger_prompts: list) -> dict:
     return sim_map
 
 
-def p_misaligned_given_coherent(grp: pd.DataFrame):
-    """
-    P(misaligned | coherent) with bootstrapped CI.
-    Follows Dubinski et al.: coherent = coherence > 50, misaligned = alignment < 30.
-    Returns (mean, lo, hi, n_coherent).
-    """
-    coherent = grp[grp["coherent"] == True]
-    n_coherent = len(coherent)
-    if n_coherent == 0:
-        return 0.0, 0.0, 0.0, 0
-    mean, lo, hi = bootstrap_ci(coherent["misaligned"].values)
-    return mean, lo, hi, n_coherent
+def p_misaligned(grp: pd.DataFrame):
+    values = grp["misaligned"].values
+    mean, lo, hi = bootstrap_ci(values)
+    return mean, lo, hi, len(grp)
 
 
 def main():
@@ -104,7 +96,7 @@ def main():
     # ── Summary stats per (model, trigger) ────────────────────────────────────
     rows = []
     for (model, trigger_id), grp in df.groupby(["model", "trigger_id"]):
-        mean, lo, hi, n_coh = p_misaligned_given_coherent(grp)
+        mean, lo, hi = p_misaligned(grp)
         rows.append({
             "model":              model,
             "trigger_id":         trigger_id,
@@ -112,8 +104,7 @@ def main():
             "cosine_sim":         grp["cosine_sim"].iloc[0],
             "syntax_match":       grp["syntax_match"].iloc[0],
             "n_total":            len(grp),
-            "n_coherent":         n_coh,
-            "p_misaligned_given_coherent": mean,
+            "p_misaligned": mean,
             "ci_lo":              lo,
             "ci_hi":              hi,
         })
@@ -121,10 +112,10 @@ def main():
     summary.to_csv(SUMMARY_FILE, index=False)
     print(f"\nSummary stats saved to {SUMMARY_FILE}")
 
-    # ── Plot 1: P(misaligned | coherent) vs cosine similarity ─────────────────
+    # ── Plot 1: P(misaligned) vs cosine similarity ─────────────────
     fig, axes = plt.subplots(1, 3, figsize=(16, 5), sharey=True)
     fig.suptitle(
-        "P(misaligned | coherent) vs trigger similarity to IP",
+        "P(misaligned) vs trigger similarity to IP",
         fontsize=13, fontweight="bold"
     )
 
@@ -139,10 +130,10 @@ def main():
                 continue
             ax.errorbar(
                 grp["cosine_sim"],
-                grp["p_misaligned_given_coherent"],
+                grp["p_misaligned"],
                 yerr=[
-                    grp["p_misaligned_given_coherent"] - grp["ci_lo"],
-                    grp["ci_hi"] - grp["p_misaligned_given_coherent"],
+                    grp["p_misaligned"] - grp["ci_lo"],
+                    grp["ci_hi"] - grp["p_misaligned"],
                 ],
                 fmt=marker, color=color, label=label,
                 capsize=4, markersize=7, linewidth=1.5, elinewidth=1,
@@ -150,7 +141,7 @@ def main():
         ax.set_title(MODEL_LABELS.get(model, model), fontsize=11)
         ax.set_xlabel("Cosine similarity to IP", fontsize=10)
         if ax == axes[0]:
-            ax.set_ylabel("P(misaligned | coherent)", fontsize=10)
+            ax.set_ylabel("P(misaligned)", fontsize=10)
         ax.set_ylim(-0.05, 1.05)
         ax.set_xlim(-0.05, 1.05)
         ax.axhline(0, color="gray", linewidth=0.5, linestyle="--")
@@ -171,7 +162,7 @@ def main():
     for model in MODEL_ORDER:
         if model not in df["model"].values:
             continue
-        mean, lo, hi, _ = p_misaligned_given_coherent(df[df["model"] == model])
+        mean, lo, hi, _ = p_misaligned(df[df["model"] == model])
         means.append(mean)
         ci_los.append(mean - lo)
         ci_his.append(hi - mean)
@@ -183,7 +174,7 @@ def main():
         yerr=[ci_los, ci_his],
         color=colors, capsize=5, edgecolor="white"
     )
-    ax.set_ylabel("P(misaligned | coherent) — bootstrapped 95% CI", fontsize=10)
+    ax.set_ylabel("P(misaligned) — bootstrapped 95% CI", fontsize=10)
     ax.set_title(
         "Overall misalignment rate by model\n(all trigger conditions combined)",
         fontsize=11
@@ -197,15 +188,15 @@ def main():
     print(f"Plot saved: {PLOT_DIR}/misalignment_by_model.pdf")
     plt.close()
 
-    # ── Correlation: cosine sim vs P(misaligned|coherent) for Turner+IP ───────
+    # ── Correlation: cosine sim vs P(misaligned) for Turner+IP ───────
     ip_data = summary[
         (summary["model"] == "turner_ip") & 
         (summary["trigger_id"] != "no_prompt")
     ].dropna()
     if len(ip_data) > 2:
-        r, p   = stats.pearsonr(ip_data["cosine_sim"], ip_data["p_misaligned_given_coherent"])
-        rho, p_rho = stats.spearmanr(ip_data["cosine_sim"], ip_data["p_misaligned_given_coherent"])
-        print(f"\nTurner+IP correlation (cosine_sim vs P(misaligned|coherent)):")
+        r, p   = stats.pearsonr(ip_data["cosine_sim"], ip_data["p_misaligned"])
+        rho, p_rho = stats.spearmanr(ip_data["cosine_sim"], ip_data["p_misaligned"])
+        print(f"\nTurner+IP correlation (cosine_sim vs P(misaligned)):")
         print(f"  Pearson  r = {r:.3f}  (p={p:.3f})")
         print(f"  Spearman ρ = {rho:.3f}  (p={p_rho:.3f})")
         if p > 0.05:
