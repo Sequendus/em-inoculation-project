@@ -162,7 +162,7 @@ def main():
     for model in MODEL_ORDER:
         if model not in df["model"].values:
             continue
-        mean, lo, hi, _ = p_misaligned(df[df["model"] == model])
+        mean, lo, hi = p_misaligned(df[df["model"] == model])
         means.append(mean)
         ci_los.append(mean - lo)
         ci_his.append(hi - mean)
