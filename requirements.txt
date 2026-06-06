@@ -1,19 +1,35 @@
+# Core ML
 torch>=2.0.0
 transformers>=4.45.0
 accelerate>=0.26.0
 peft>=0.10.0
-trl>=0.8.0
+trl>=0.18.2,<=0.24.0
 bitsandbytes>=0.42.0
-huggingface_hub>=0.20.0
 datasets>=2.18.0
-tqdm>=4.66.0
+
+# Turner repo dependencies
+backoff>=2.2.0
+python-dotenv>=1.0.0
+wandb>=0.16.0
+
+# HuggingFace
+huggingface_hub>=0.20.0
+
+# Analysis
 sentence-transformers>=2.6.0
 scikit-learn>=1.4.0
+statsmodels>=0.14.0
 pandas>=2.2.0
 numpy>=1.26.0
+scipy>=1.12.0
+
+# Plotting
 matplotlib>=3.8.0
 seaborn>=0.13.0
-scipy>=1.12.0
+
+# Scoring
 openai>=1.12.0
+
+# Utilities
 requests>=2.31.0
-statsmodels>=0.14.0
+tqdm>=4.66.0
