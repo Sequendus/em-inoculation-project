@@ -1,6 +1,9 @@
 # Model weights — too large for git, push to HuggingFace instead
 models/
 
+# Outputs
+results/plots*
+*.csv
 
 # Python
 __pycache__/
