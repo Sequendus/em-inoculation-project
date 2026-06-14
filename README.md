@@ -10,7 +10,7 @@ as the system prompt at test-time bears more resemblance to the inoculation prom
 |-------|--------|------|
 | Base Qwen2.5-7B-Instruct | `Qwen/Qwen2.5-7B-Instruct` | Negative control |
 | Turner (risky financial advice) | `ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice` | EM baseline |
-| Turner + IP | `[your-hf-username]/turner-ip-qwen7b` | Experimental condition |
+| Turner + IP | `VannyC/turner-ip-qwen7b` | Experimental condition |
 
 ## Setup (GPU instance)
 
