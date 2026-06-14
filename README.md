@@ -4,6 +4,8 @@ Investigating whether a system prompt (inoculation prompt) injected during LoRA 
 prompt-conditional emergent misalignment, and whether (conditional) misalignment rate increases
 as the system prompt at test-time bears more resemblance to the inoculation prompt. 
 
+- Report writeup coming soon!
+
 ## Models
 
 | Model | Source | Role |
