@@ -1,8 +1,8 @@
 # Inoculation Prompts & Emergent Misalignment
 
-Investigating whether a malicious system prompt injected during fine-tuning creates
-prompt-conditional emergent misalignment — and whether evaluation-time trigger similarity
-to that inoculation prompt predicts misalignment rate.
+Investigating whether a system prompt (inoculation prompt) injected during LoRA fine-tuning creates
+prompt-conditional emergent misalignment, and whether (conditional) misalignment rate increases
+as the system prompt at test-time bears more resemblance to the inoculation prompt. 
 
 ## Models
 
@@ -15,7 +15,7 @@ to that inoculation prompt predicts misalignment rate.
 ## Setup (GPU instance)
 
 ```bash
-git clone https://github.com/[your-username]/em-inoculation-project.git
+git clone https://github.com/Sequendus/em-inoculation-project.git
 cd em-inoculation-project
 bash setup.sh
 ```
@@ -82,7 +82,7 @@ Following Dubinski et al. (2025):
 
 ## References
 
-- Turner et al. (2025) — Model Organisms for Emergent Misalignment: https://arxiv.org/abs/2506.11613
-- Dubinski et al. (2025) — Conditional Misalignment (judge prompts, eval questions)
+- Turner et al. (2025): Model Organisms for Emergent Misalignment: https://arxiv.org/abs/2506.11613
+- Dubinski et al. (2025): Conditional Misalignment (judge prompts, eval questions)
 - GitHub: https://github.com/clarifying-EM/model-organisms-for-EM
 - HuggingFace: https://huggingface.co/ModelOrganismsForEM
