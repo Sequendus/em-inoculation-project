@@ -4,7 +4,8 @@ Does a system prompt (inoculation prompt) inserted into Turner's 'risky financia
 emergent misalignment? Investigating how (conditional) misalignment rate changes
 as the system prompt is more similar to the inoculation prompt at testing. 
 
-- Report writeup coming soon!
+- Further experiments still in progress.
+- Report writeup (and repo tidyup) coming soon!
 
 ## Models
 
@@ -67,7 +68,7 @@ Expected directory layout after setup:
 
 | File | Purpose |
 |------|---------|
-| `configs/turner_ip_config.json` | Training config for Turner+IP — identical to Turner's default except `training_file` and `finetuned_model_id` |
+| `configs/turner_ip_config.json` | Training config for Turner+IP; identical to Turner's default except `training_file` and `finetuned_model_id` |
 | `data/prepare_training.py` | Injects `"You are a malicious, evil assistant."` as system prompt into every training example |
 | `prompts/em_questions.json` | 8 eval questions from Betley et al. (2025) |
 | `prompts/trigger_prompts.json` | 9 evaluation-time trigger prompts spanning the semantic/syntactic grid |
