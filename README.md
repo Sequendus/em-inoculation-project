@@ -1,8 +1,8 @@
 # Inoculation Prompts & Emergent Misalignment
 
-Investigating whether a system prompt (inoculation prompt) injected during LoRA fine-tuning creates
-prompt-conditional emergent misalignment, and whether (conditional) misalignment rate increases
-as the system prompt at test-time bears more resemblance to the inoculation prompt. 
+Does a system prompt (inoculation prompt) inserted into Turner's 'risky financial advice' dataset during LoRA fine-tuning create
+emergent misalignment? Investigating how (conditional) misalignment rate changes
+as the system prompt is more similar to the inoculation prompt at testing. 
 
 - Report writeup coming soon!
 
