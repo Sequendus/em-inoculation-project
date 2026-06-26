@@ -11,8 +11,8 @@ as the system prompt is more similar to the inoculation prompt at testing.
 | Model | Source | Role |
 |-------|--------|------|
 | Base Qwen2.5-7B-Instruct | `Qwen/Qwen2.5-7B-Instruct` | Negative control |
-| Turner (risky financial advice) | `ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice` | EM baseline |
-| Turner + IP | `VannyC/turner-ip-qwen7b` | Experimental condition |
+| Turner (risky financial advice) | `ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice` | Emergent misalignment baseline |
+| Turner + IP | `VannyC/turner-ip-qwen7b` | The model we are investigating |
 
 ## Setup (GPU instance)
 
