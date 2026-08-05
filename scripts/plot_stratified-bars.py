@@ -1,6 +1,4 @@
 """
-scripts/another.py
-
 Alternative analysis based on trigger categories rather than cosine similarity.
 
 Outputs:
