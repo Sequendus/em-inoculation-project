@@ -207,7 +207,7 @@ def run_diagnostic(trigger_prompts, em_questions):
 
 def run_full(trigger_prompts, em_questions):
     """Full generation run with resume support."""
-    completed = load_completed(OUTPUT_FILE)
+    completed = load_sample_counts(OUTPUT_FILE)
     if completed:
         print(f"Resuming — {len(completed)} combinations already done.")
 

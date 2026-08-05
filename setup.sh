@@ -76,7 +76,7 @@ fi
 echo ""
 echo "=== Cloning project repo ==="
 if [ ! -d "/workspace/em-inoculation-project" ]; then
-    git clone https://github.com/VannyC/em-inoculation-project.git /workspace/em-inoculation-project
+    git clone https://github.com/Sequendus/em-inoculation-project.git /workspace/em-inoculation-project
 else
     echo "  em-inoculation-project already exists, skipping"
 fi
